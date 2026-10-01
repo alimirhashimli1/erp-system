@@ -1,0 +1,78 @@
+// ProcureStack schema. Change it only via `pnpm db:migrate` (creates a migration file).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Mirrors @procurestack/shared ROLES — keep in sync (a unit test enforces it).
+enum Role {
+  REQUESTER
+  APPROVER
+  BUYER
+  WAREHOUSE
+  FINANCE
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  fullName     String
+  passwordHash String
+  /// A person can hold several roles; SoD conflicts are checked per action, not here.
+  roles        Role[]
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+/// Opaque refresh tokens, stored only as SHA-256 hashes. Every rotation creates a new
+/// row in the same `familyId`; presenting an already-rotated token revokes the family.
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  familyId     String    @db.Uuid
+  tokenHash    String    @unique
+  expiresAt    DateTime  @db.Timestamptz(3)
+  revokedAt    DateTime? @db.Timestamptz(3)
+  replacedById String?   @db.Uuid
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+/// Append-only trail of sensitive actions (who, what, when, before/after).
+/// `onDelete: Restrict` means a user with audit history cannot be hard-deleted — deactivate instead.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  metadata   Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

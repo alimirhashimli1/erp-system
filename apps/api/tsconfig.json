@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
+    "types": ["node", "jest"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // Nest injects interfaces (ports) via tokens; with isolatedModules those imports
+    // would all need `import type`, which is easy to get subtly wrong with decorators.
+    "isolatedModules": false,
+    "incremental": true
+  },
+  "include": ["src", "test", "prisma"]
+}

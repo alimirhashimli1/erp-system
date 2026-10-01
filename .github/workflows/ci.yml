@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege for the workflow token.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Audit, lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Dependency audit (fails on high/critical advisories)
+        run: pnpm audit --audit-level=high
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  migrations:
+    name: Migrations apply cleanly to a real Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: procurestack
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/procurestack
+      SEED_DEFAULT_PASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @procurestack/api exec prisma migrate deploy
+      - name: Schema and migrations are in sync (no un-migrated schema changes)
+        run: pnpm --filter @procurestack/api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - run: pnpm --filter @procurestack/api db:seed
+      - name: Audit log is append-only
+        run: |
+          psql "$DATABASE_URL" -c "INSERT INTO audit_logs (id, action, \"entityType\") VALUES (gen_random_uuid(), 'CI', 'Test')"
+          if psql "$DATABASE_URL" -c "DELETE FROM audit_logs" 2>/dev/null; then echo "DELETE should have failed"; exit 1; fi
+
+  docker:
+    name: Production images build
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -f apps/api/Dockerfile --target runtime -t procurestack-api .
+      - run: docker build -f apps/api/Dockerfile --target migrator -t procurestack-migrate .
+      - run: docker build -f apps/web/Dockerfile --target runtime -t procurestack-web .
+      - name: Runtime images run as non-root
+        run: |
+          test "$(docker run --rm --entrypoint id procurestack-api -u)" != "0"
+          test "$(docker run --rm --entrypoint id procurestack-web -u)" != "0"
