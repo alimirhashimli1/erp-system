@@ -13,6 +13,7 @@ import { RedisModule } from './infrastructure/redis/redis.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { MasterDataModule } from './modules/master-data/master-data.module';
 
 const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
 
@@ -61,6 +62,7 @@ const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
     AuditModule,
     AuthModule,
     HealthModule,
+    MasterDataModule,
   ],
   providers: [
     // Throttle first so floods are rejected before any token/DB work happens.

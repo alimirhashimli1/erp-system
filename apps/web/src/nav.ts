@@ -1,0 +1,16 @@
+import type { Role } from '@procurestack/shared';
+
+export interface NavItem {
+  to: string;
+  label: string;
+  /** Who sees the link. UX only — the API authorizes every request on its own. */
+  roles?: readonly Role[];
+}
+
+export const NAV_ITEMS: readonly NavItem[] = [
+  { to: '/', label: 'Dashboard' },
+  { to: '/master-data', label: 'Master data' },
+];
+
+export const hasAnyRole = (userRoles: readonly Role[], allowed?: readonly Role[]): boolean =>
+  !allowed || allowed.some((r) => userRoles.includes(r));

@@ -18,10 +18,20 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** Stable business error code from the API (e.g. `SUPPLIER_EXISTS`), when present. */
+    readonly code?: string,
   ) {
     super(message);
   }
 }
+
+/** Human-readable text for any thrown value, for inline error messages. */
+export const errorText = (e: unknown): string =>
+  e instanceof ApiError && e.status === 403
+    ? 'You do not have permission to do this.'
+    : e instanceof Error
+      ? e.message
+      : 'Something went wrong.';
 
 /** Session endpoints themselves must never trigger a refresh-and-retry loop. */
 const NO_RETRY_PATHS = new Set(['/auth/login', '/auth/refresh', '/auth/logout']);
@@ -78,15 +88,21 @@ export async function apiFetch<S extends z.ZodType>(
     if (await refreshSession()) return apiFetch(path, options, false);
   }
 
-  if (!res.ok) throw new ApiError(res.status, await errorMessage(res));
+  if (!res.ok) {
+    const { message, code } = await errorBody(res);
+    throw new ApiError(res.status, message, code);
+  }
   return options.schema.parse(res.status === 204 ? undefined : await res.json());
 }
 
-async function errorMessage(res: Response): Promise<string> {
+async function errorBody(res: Response): Promise<{ message: string; code?: string }> {
   try {
-    const body = (await res.json()) as { message?: unknown };
-    return typeof body.message === 'string' ? body.message : res.statusText;
+    const body = (await res.json()) as { message?: unknown; code?: unknown };
+    return {
+      message: typeof body.message === 'string' ? body.message : res.statusText,
+      ...(typeof body.code === 'string' ? { code: body.code } : {}),
+    };
   } catch {
-    return res.statusText;
+    return { message: res.statusText };
   }
 }

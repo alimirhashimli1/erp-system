@@ -1,10 +1,11 @@
 /**
- * Dev seed: one user per procurement role. Idempotent (upsert), safe to re-run.
+ * Dev seed: one user per procurement role plus a small, realistic master-data set.
+ * Idempotent (upsert by business key), safe to re-run.
  * The password comes from SEED_DEFAULT_PASSWORD — never hardcoded here.
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as argon2 from 'argon2';
-import { PrismaClient, type Role } from '../src/generated/prisma/client';
+import { PrismaClient, type Role, type Uom } from '../src/generated/prisma/client';
 
 try {
   process.loadEnvFile('../../.env');
@@ -26,6 +27,106 @@ const users: { email: string; fullName: string; roles: Role[] }[] = [
   { email: 'admin@procurestack.dev', fullName: 'Ada Admin', roles: ['ADMIN'] },
 ];
 
+// Countries chosen to make later lessons interesting: EU vs non-EU duties (Incoterms,
+// landed cost) and LkSG country risk (Phase 4).
+const suppliers = [
+  {
+    code: 'SUP-0001',
+    name: 'Rhein Fasteners GmbH',
+    countryCode: 'DE',
+    email: 'sales@rhein-fasteners.example',
+  },
+  {
+    code: 'SUP-0002',
+    name: 'Shenzhen Precision Parts Co.',
+    countryCode: 'CN',
+    email: 'export@szprecision.example',
+  },
+  {
+    code: 'SUP-0003',
+    name: 'Polska Packaging Sp. z o.o.',
+    countryCode: 'PL',
+    email: 'biuro@polpack.example',
+  },
+  {
+    code: 'SUP-0004',
+    name: 'Midwest Industrial Supply Inc.',
+    countryCode: 'US',
+    email: 'orders@midwest-ind.example',
+  },
+  {
+    code: 'SUP-0005',
+    name: 'Pune Castings Pvt. Ltd.',
+    countryCode: 'IN',
+    email: 'sales@punecastings.example',
+  },
+];
+
+const items: {
+  sku: string;
+  description: string;
+  uom: Uom;
+  category: string;
+  standardPriceCents: bigint;
+}[] = [
+  {
+    sku: 'BOLT-M8X40',
+    description: 'Hex bolt M8×40, 8.8, zinc plated',
+    uom: 'EA',
+    category: 'Fasteners',
+    standardPriceCents: 12n,
+  },
+  {
+    sku: 'NUT-M8',
+    description: 'Hex nut M8, class 8',
+    uom: 'EA',
+    category: 'Fasteners',
+    standardPriceCents: 4n,
+  },
+  {
+    sku: 'STEEL-S235',
+    description: 'Steel sheet S235JR, 2 mm',
+    uom: 'KG',
+    category: 'Raw material',
+    standardPriceCents: 95n,
+  },
+  {
+    sku: 'CABLE-NYM3',
+    description: 'Installation cable NYM-J 3×1.5',
+    uom: 'M',
+    category: 'Electrical',
+    standardPriceCents: 89n,
+  },
+  {
+    sku: 'OIL-HLP46',
+    description: 'Hydraulic oil HLP 46',
+    uom: 'L',
+    category: 'MRO',
+    standardPriceCents: 420n,
+  },
+  {
+    sku: 'BOX-CARTON-L',
+    description: 'Shipping carton 600×400×400, 25 pcs',
+    uom: 'BOX',
+    category: 'Packaging',
+    standardPriceCents: 3_150n,
+  },
+  {
+    sku: 'PUMP-HYD-20',
+    description: 'Hydraulic gear pump 20 cc',
+    uom: 'EA',
+    category: 'Spare parts',
+    standardPriceCents: 48_500n,
+  },
+];
+
+const costCenters = [
+  { code: 'CC-1000', name: 'Production' },
+  { code: 'CC-2000', name: 'Maintenance' },
+  { code: 'CC-3000', name: 'Logistics' },
+  { code: 'CC-9000', name: 'IT & Administration' },
+];
+
 async function main(databaseUrl: string, seedPassword: string): Promise<void> {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
   try {
@@ -37,7 +138,18 @@ async function main(databaseUrl: string, seedPassword: string): Promise<void> {
         create: { ...u, passwordHash },
       });
     }
-    console.log(`Seeded ${users.length} users`);
+    for (const sup of suppliers) {
+      await prisma.supplier.upsert({ where: { code: sup.code }, update: {}, create: sup });
+    }
+    for (const item of items) {
+      await prisma.item.upsert({ where: { sku: item.sku }, update: {}, create: item });
+    }
+    for (const cc of costCenters) {
+      await prisma.costCenter.upsert({ where: { code: cc.code }, update: {}, create: cc });
+    }
+    console.log(
+      `Seeded ${users.length} users, ${suppliers.length} suppliers, ${items.length} items, ${costCenters.length} cost centers`,
+    );
   } finally {
     await prisma.$disconnect();
   }

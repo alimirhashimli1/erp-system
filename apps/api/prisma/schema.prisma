@@ -84,3 +84,54 @@ model DocumentCounter {
 
   @@map("document_counters")
 }
+
+// ───────────────────────────── Master data ─────────────────────────────
+
+/// Mirrors @procurestack/shared UOMS.
+enum Uom {
+  EA
+  KG
+  M
+  L
+  BOX
+}
+
+model Supplier {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  /// ISO 3166-1 alpha-2; drives import duties and (Phase 4) LkSG country risk.
+  countryCode String   @db.Char(2)
+  email       String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("suppliers")
+}
+
+model Item {
+  id                 String   @id @default(uuid()) @db.Uuid
+  sku                String   @unique
+  description        String
+  uom                Uom
+  category           String
+  /// EUR cents (ADR 0005). Reference price for requisition estimates.
+  standardPriceCents BigInt
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("items")
+}
+
+model CostCenter {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("cost_centers")
+}

@@ -40,4 +40,5 @@ test/                e2e specs + in-memory fakes for ports; integration/ = real-
 - Sensitive actions call `AuditService.record()` inside the same `UnitOfWork` as the change.
 - Business-rule failures throw `DomainError`; money is integer cents (ADR 0005/0006).
 - Modules: [auth](src/modules/auth/README.md) · [audit](src/modules/audit/README.md) ·
+  [master-data](src/modules/master-data/README.md) ·
   health ([observability doc](../../docs/modules/observability.md))
