@@ -18,9 +18,22 @@ if (!DATABASE_URL || !SEED_DEFAULT_PASSWORD) {
   throw new Error('DATABASE_URL and SEED_DEFAULT_PASSWORD must be set to seed');
 }
 
-const users: { email: string; fullName: string; roles: Role[] }[] = [
+// approvalLevel = DoA authority (ADR 0004): L1 ≤ €5k, L2 ≤ €50k, L3 unlimited.
+const users: { email: string; fullName: string; roles: Role[]; approvalLevel?: number }[] = [
   { email: 'requester@procurestack.dev', fullName: 'Rita Requester', roles: ['REQUESTER'] },
-  { email: 'approver@procurestack.dev', fullName: 'Aaron Approver', roles: ['APPROVER'] },
+  {
+    email: 'approver@procurestack.dev',
+    fullName: 'Aaron Approver (Team lead)',
+    roles: ['APPROVER'],
+    approvalLevel: 1,
+  },
+  {
+    email: 'head@procurestack.dev',
+    fullName: 'Hana Head (Head of Maintenance)',
+    roles: ['APPROVER'],
+    approvalLevel: 2,
+  },
+  { email: 'cfo@procurestack.dev', fullName: 'Carl CFO', roles: ['APPROVER'], approvalLevel: 3 },
   { email: 'buyer@procurestack.dev', fullName: 'Bea Buyer', roles: ['BUYER'] },
   { email: 'warehouse@procurestack.dev', fullName: 'Walt Warehouse', roles: ['WAREHOUSE'] },
   { email: 'finance@procurestack.dev', fullName: 'Fiona Finance', roles: ['FINANCE'] },
@@ -134,7 +147,7 @@ async function main(databaseUrl: string, seedPassword: string): Promise<void> {
     for (const u of users) {
       await prisma.user.upsert({
         where: { email: u.email },
-        update: { fullName: u.fullName, roles: u.roles },
+        update: { fullName: u.fullName, roles: u.roles, approvalLevel: u.approvalLevel ?? null },
         create: { ...u, passwordHash },
       });
     }

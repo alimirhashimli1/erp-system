@@ -21,18 +21,22 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  fullName     String
-  passwordHash String
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique
+  fullName      String
+  passwordHash  String
   /// A person can hold several roles; SoD conflicts are checked per action, not here.
-  roles        Role[]
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+  roles         Role[]
+  isActive      Boolean  @default(true)
+  /// DoA authority (ADR 0004): may approve PR steps up to this level. Null = no authority.
+  approvalLevel Int?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
 
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  requisitions  PurchaseRequisition[]
+  prApprovals   PrApproval[]
 
   @@map("users")
 }
@@ -122,6 +126,8 @@ model Item {
   createdAt          DateTime @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime @updatedAt @db.Timestamptz(3)
 
+  prLines PrLine[]
+
   @@map("items")
 }
 
@@ -133,5 +139,102 @@ model CostCenter {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
+  requisitions PurchaseRequisition[]
+
   @@map("cost_centers")
+}
+
+// ───────────────────────────── Requisitions ─────────────────────────────
+
+/// Delegation of Authority matrix (ADR 0004). Reference data, seeded by migration.
+model DoaLevel {
+  level          Int     @id
+  name           String
+  /// Highest PR total (EUR cents) this level may approve; null = unlimited.
+  maxAmountCents BigInt?
+
+  @@map("doa_levels")
+}
+
+enum PrStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETURNED
+  CANCELLED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+model PurchaseRequisition {
+  id             String    @id @default(uuid()) @db.Uuid
+  number         String    @unique
+  requesterId    String    @db.Uuid
+  costCenterId   String    @db.Uuid
+  title          String
+  justification  String
+  needByDate     DateTime  @db.Date
+  status         PrStatus  @default(DRAFT)
+  totalCents     BigInt
+  /// Fixed at submit from the DoA matrix; 0 while in draft.
+  requiredLevels Int       @default(0)
+  /// Incremented on every submit, so approvals of a returned version don't count again.
+  approvalRound  Int       @default(0)
+  /// Optimistic lock (ADR 0006).
+  version        Int       @default(1)
+  submittedAt    DateTime? @db.Timestamptz(3)
+  decidedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  requester  User         @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  costCenter CostCenter   @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  lines      PrLine[]
+  approvals  PrApproval[]
+
+  @@index([requesterId])
+  @@index([status])
+  @@map("purchase_requisitions")
+}
+
+model PrLine {
+  id             String  @id @default(uuid()) @db.Uuid
+  requisitionId  String  @db.Uuid
+  lineNo         Int
+  itemId         String  @db.Uuid
+  /// Snapshots: master-data edits must not rewrite what was requested.
+  description    String
+  uom            Uom
+  quantity       Decimal @db.Decimal(14, 3)
+  unitPriceCents BigInt
+  lineTotalCents BigInt
+
+  requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  item        Item                @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@unique([requisitionId, lineNo])
+  @@map("pr_lines")
+}
+
+/// One decision per (PR, round, level): the unique key stops two approvers racing on a step.
+model PrApproval {
+  id            String           @id @default(uuid()) @db.Uuid
+  requisitionId String           @db.Uuid
+  round         Int
+  level         Int
+  approverId    String           @db.Uuid
+  decision      ApprovalDecision
+  comment       String?
+  decidedAt     DateTime         @default(now()) @db.Timestamptz(3)
+
+  requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  approver    User                @relation(fields: [approverId], references: [id], onDelete: Restrict)
+
+  @@unique([requisitionId, round, level])
+  @@map("pr_approvals")
 }

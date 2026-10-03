@@ -4,6 +4,9 @@ import { AppLayout } from './layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MasterDataPage } from './pages/master-data/MasterDataPage';
+import { RequisitionDetailPage } from './pages/requisitions/RequisitionDetailPage';
+import { RequisitionFormPage } from './pages/requisitions/RequisitionFormPage';
+import { RequisitionsPage } from './pages/requisitions/RequisitionsPage';
 
 export function App() {
   return (
@@ -19,6 +22,14 @@ export function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
+          <Route path="requisitions" element={<RequisitionsPage />} />
+          <Route path="requisitions/new" element={<RequisitionFormPage />} />
+          <Route path="requisitions/:id" element={<RequisitionDetailPage />} />
+          <Route path="requisitions/:id/edit" element={<RequisitionFormPage />} />
+          <Route
+            path="approvals"
+            element={<RequisitionsPage key="approvals" initialScope="awaiting-my-approval" />}
+          />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

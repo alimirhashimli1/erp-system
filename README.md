@@ -18,14 +18,15 @@ docker compose up --build
 | Readiness          | http://localhost:8080/api/health/ready |
 
 Demo users (password = `SEED_DEFAULT_PASSWORD` in `.env`):
-`requester@`, `approver@`, `buyer@`, `warehouse@`, `finance@`, `admin@` + `procurestack.dev`.
+`requester@`, `approver@` (DoA L1), `head@` (L2), `cfo@` (L3), `buyer@`, `warehouse@`,
+`finance@`, `admin@` + `procurestack.dev`.
 
 ## Local development (hot reload)
 
 ```bash
 docker compose up -d postgres redis        # infrastructure only
 pnpm --filter @procurestack/api db:deploy  # apply migrations
-pnpm --filter @procurestack/api db:seed    # demo users
+pnpm --filter @procurestack/api db:seed    # demo users + master data
 pnpm dev                                   # api :3000, web :5173 (proxies /api)
 ```
 

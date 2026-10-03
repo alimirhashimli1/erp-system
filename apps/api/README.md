@@ -41,4 +41,5 @@ test/                e2e specs + in-memory fakes for ports; integration/ = real-
 - Business-rule failures throw `DomainError`; money is integer cents (ADR 0005/0006).
 - Modules: [auth](src/modules/auth/README.md) · [audit](src/modules/audit/README.md) ·
   [master-data](src/modules/master-data/README.md) ·
+  [requisitions](src/modules/requisitions/README.md) ·
   health ([observability doc](../../docs/modules/observability.md))

@@ -41,10 +41,16 @@ export async function createHttpApp(customize?: (b: TestingModuleBuilder) => Tes
   const tokens = moduleRef.get(TokenService);
 
   /** Inserts a user with the given roles and returns a ready-to-use access token. */
-  async function user(roles: Role[]): Promise<TestUser> {
+  async function user(roles: Role[], approvalLevel?: number): Promise<TestUser> {
     const email = `${roles.join('-').toLowerCase()}-${randomUUID()}@test.dev`;
     const row = await prisma.user.create({
-      data: { email, fullName: `Test ${roles.join('/')}`, passwordHash: 'unused', roles },
+      data: {
+        email,
+        fullName: `Test ${roles.join('/')}`,
+        passwordHash: 'unused',
+        roles,
+        approvalLevel,
+      },
     });
     const token = await tokens.signAccessToken({ ...row, roles: row.roles });
     return { id: row.id, email, roles, token };

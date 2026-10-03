@@ -6,7 +6,16 @@ import { Navigate } from 'react-router';
 import { ApiError } from '../api/http';
 import { useAuth } from '../auth/auth-context';
 
-const DEMO_ACCOUNTS = ['requester', 'approver', 'buyer', 'warehouse', 'finance', 'admin'];
+const DEMO_ACCOUNTS = [
+  'requester',
+  'approver',
+  'head',
+  'cfo',
+  'buyer',
+  'warehouse',
+  'finance',
+  'admin',
+];
 
 export function LoginPage() {
   const { state, login } = useAuth();

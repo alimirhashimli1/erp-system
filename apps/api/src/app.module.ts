@@ -5,6 +5,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { LoggerModule } from 'nestjs-pino';
+import { CommonModule } from './common/common.module';
 import { DomainErrorFilter } from './common/domain-error.filter';
 import { AppConfigModule } from './config/config.module';
 import { AppConfigService } from './config/app-config.service';
@@ -14,12 +15,14 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
+import { RequisitionsModule } from './modules/requisitions/requisitions.module';
 
 const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
 
 @Module({
   imports: [
     AppConfigModule,
+    CommonModule,
     LoggerModule.forRootAsync({
       inject: [AppConfigService],
       useFactory: (config: AppConfigService) => ({
@@ -63,6 +66,7 @@ const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
     AuthModule,
     HealthModule,
     MasterDataModule,
+    RequisitionsModule,
   ],
   providers: [
     // Throttle first so floods are rejected before any token/DB work happens.
