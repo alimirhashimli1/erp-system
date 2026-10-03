@@ -91,7 +91,7 @@ describe('Purchase requisitions (HTTP + Postgres)', () => {
 
     const actions = await t.prisma.auditLog.findMany({
       where: { entityId: pr.id },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { seq: 'asc' },
       select: { action: true },
     });
     expect(actions.map((a) => a.action)).toEqual([

@@ -75,6 +75,8 @@ services:
       CORS_ORIGINS: http://localhost:${WEB_HOST_PORT:-8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      JOBS_ENABLED: ${JOBS_ENABLED:-true}
+      RFX_SIMULATE_SUPPLIERS: ${RFX_SIMULATE_SUPPLIERS:-true}
     depends_on:
       migrate:
         condition: service_completed_successfully

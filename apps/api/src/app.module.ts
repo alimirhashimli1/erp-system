@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ConditionalModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { LoggerModule } from 'nestjs-pino';
@@ -16,6 +17,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { RequisitionsModule } from './modules/requisitions/requisitions.module';
+import { SourcingJobsModule } from './modules/sourcing/jobs/sourcing.jobs';
+import { SourcingModule } from './modules/sourcing/sourcing.module';
 
 const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
 
@@ -67,6 +70,9 @@ const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
     HealthModule,
     MasterDataModule,
     RequisitionsModule,
+    SourcingModule,
+    // Queues + workers need Redis; tests and Redis-less runs set JOBS_ENABLED=false (ADR 0008).
+    ConditionalModule.registerWhen(SourcingJobsModule, (env) => env['JOBS_ENABLED'] !== 'false'),
   ],
   providers: [
     // Throttle first so floods are rejected before any token/DB work happens.

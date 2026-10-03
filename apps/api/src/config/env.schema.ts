@@ -26,6 +26,11 @@ export const EnvSchema = z.object({
     .pipe(z.array(z.url())),
   COOKIE_SECURE: booleanString.default(true),
   SWAGGER_ENABLED: booleanString.default(false),
+
+  /** Run BullMQ queues + workers in this process. Off → no Redis needed (tests). */
+  JOBS_ENABLED: booleanString.default(true),
+  /** Demo only: fake supplier bids arrive after an RFx is published. */
+  RFX_SIMULATE_SUPPLIERS: booleanString.default(false),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

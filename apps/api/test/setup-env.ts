@@ -7,4 +7,5 @@ Object.assign(process.env, {
   JWT_ACCESS_SECRET: 'test-secret-that-is-at-least-32-characters',
   CORS_ORIGINS: 'http://localhost:5173',
   COOKIE_SECURE: 'false',
+  JOBS_ENABLED: 'false',
 });

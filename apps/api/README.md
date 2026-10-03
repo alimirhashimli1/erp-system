@@ -42,4 +42,5 @@ test/                e2e specs + in-memory fakes for ports; integration/ = real-
 - Modules: [auth](src/modules/auth/README.md) · [audit](src/modules/audit/README.md) ·
   [master-data](src/modules/master-data/README.md) ·
   [requisitions](src/modules/requisitions/README.md) ·
+  [sourcing](src/modules/sourcing/README.md) ·
   health ([observability doc](../../docs/modules/observability.md))

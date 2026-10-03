@@ -1,6 +1,9 @@
 /** Colour family per document status, shared by every document type. */
 const TONE: Record<string, 'neutral' | 'info' | 'ok' | 'warn' | 'bad'> = {
   DRAFT: 'neutral',
+  INVITED: 'neutral',
+  RESPONDED: 'ok',
+  DECLINED: 'bad',
   SUBMITTED: 'info',
   PUBLISHED: 'info',
   ISSUED: 'info',

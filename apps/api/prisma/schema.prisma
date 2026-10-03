@@ -37,6 +37,7 @@ model User {
   auditLogs     AuditLog[]
   requisitions  PurchaseRequisition[]
   prApprovals   PrApproval[]
+  rfxEvents     RfxEvent[]
 
   @@map("users")
 }
@@ -64,6 +65,8 @@ model RefreshToken {
 /// `onDelete: Restrict` means a user with audit history cannot be hard-deleted — deactivate instead.
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
+  /// Strict insertion order (timestamps can tie); basis for a hash chain later.
+  seq        BigInt   @unique @default(autoincrement())
   actorId    String?  @db.Uuid
   action     String
   entityType String
@@ -111,6 +114,9 @@ model Supplier {
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
+  rfxInvitations RfxInvitation[]
+  rfxBids        RfxBid[]
+
   @@map("suppliers")
 }
 
@@ -126,7 +132,8 @@ model Item {
   createdAt          DateTime @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime @updatedAt @db.Timestamptz(3)
 
-  prLines PrLine[]
+  prLines  PrLine[]
+  rfxLines RfxLine[]
 
   @@map("items")
 }
@@ -203,19 +210,22 @@ model PurchaseRequisition {
 }
 
 model PrLine {
-  id             String  @id @default(uuid()) @db.Uuid
-  requisitionId  String  @db.Uuid
+  id             String         @id @default(uuid()) @db.Uuid
+  requisitionId  String         @db.Uuid
   lineNo         Int
-  itemId         String  @db.Uuid
+  itemId         String         @db.Uuid
   /// Snapshots: master-data edits must not rewrite what was requested.
   description    String
   uom            Uom
-  quantity       Decimal @db.Decimal(14, 3)
+  quantity       Decimal        @db.Decimal(14, 3)
   unitPriceCents BigInt
   lineTotalCents BigInt
+  /// Sourcing backlog: OPEN once the PR is approved; claimed by an RFx, then a PO.
+  sourcingStatus SourcingStatus @default(OPEN)
 
   requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
   item        Item                @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  rfxLines    RfxLine[]
 
   @@unique([requisitionId, lineNo])
   @@map("pr_lines")
@@ -237,4 +247,153 @@ model PrApproval {
 
   @@unique([requisitionId, round, level])
   @@map("pr_approvals")
+}
+
+// ───────────────────────────── Sourcing (RFx) ─────────────────────────────
+
+enum SourcingStatus {
+  OPEN
+  IN_SOURCING
+  AWARDED
+  ORDERED
+}
+
+enum RfxType {
+  RFI
+  RFP
+  RFQ
+}
+
+enum RfxStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  EVALUATED
+  AWARDED
+  CANCELLED
+}
+
+enum InvitationStatus {
+  INVITED
+  RESPONDED
+  DECLINED
+}
+
+/// Mirrors @procurestack/shared INCOTERMS.
+enum Incoterm {
+  EXW
+  FCA
+  CPT
+  CIP
+  DAP
+  DPU
+  DDP
+  FAS
+  FOB
+  CFR
+  CIF
+}
+
+enum BidSource {
+  MANUAL
+  SIMULATED
+}
+
+model RfxEvent {
+  id                 String    @id @default(uuid()) @db.Uuid
+  number             String    @unique
+  type               RfxType
+  title              String
+  buyerId            String    @db.Uuid
+  status             RfxStatus @default(DRAFT)
+  responseDeadline   DateTime  @db.Timestamptz(3)
+  publishedAt        DateTime? @db.Timestamptz(3)
+  closedAt           DateTime? @db.Timestamptz(3)
+  evaluatedAt        DateTime? @db.Timestamptz(3)
+  awardedAt          DateTime? @db.Timestamptz(3)
+  /// Why an award did not go to the best landed-cost offer (compliance).
+  awardJustification String?
+  version            Int       @default(1)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+
+  buyer       User            @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  lines       RfxLine[]
+  invitations RfxInvitation[]
+  bids        RfxBid[]
+
+  @@index([status])
+  @@map("rfx_events")
+}
+
+model RfxLine {
+  id               String  @id @default(uuid()) @db.Uuid
+  rfxId            String  @db.Uuid
+  lineNo           Int
+  prLineId         String  @db.Uuid
+  itemId           String  @db.Uuid
+  quantity         Decimal @db.Decimal(14, 3)
+  uom              Uom
+  awardedBidLineId String? @unique @db.Uuid
+
+  rfx            RfxEvent     @relation(fields: [rfxId], references: [id], onDelete: Cascade)
+  prLine         PrLine       @relation(fields: [prLineId], references: [id], onDelete: Restrict)
+  item           Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  awardedBidLine RfxBidLine?  @relation("AwardedBidLine", fields: [awardedBidLineId], references: [id], onDelete: Restrict)
+  bidLines       RfxBidLine[] @relation("BidLineRfxLine")
+
+  @@unique([rfxId, lineNo])
+  @@index([prLineId])
+  @@map("rfx_lines")
+}
+
+model RfxInvitation {
+  rfxId       String           @db.Uuid
+  supplierId  String           @db.Uuid
+  status      InvitationStatus @default(INVITED)
+  respondedAt DateTime?        @db.Timestamptz(3)
+
+  rfx      RfxEvent @relation(fields: [rfxId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@id([rfxId, supplierId])
+  @@map("rfx_invitations")
+}
+
+/// One bid per supplier per event; a revised bid before the deadline replaces it.
+model RfxBid {
+  id                       String    @id @default(uuid()) @db.Uuid
+  rfxId                    String    @db.Uuid
+  supplierId               String    @db.Uuid
+  incoterm                 Incoterm
+  leadTimeDays             Int
+  validUntil               DateTime  @db.Date
+  originChargesCents       BigInt    @default(0)
+  freightCents             BigInt    @default(0)
+  insuranceCents           BigInt    @default(0)
+  destinationHandlingCents BigInt    @default(0)
+  dutyRateBps              Int       @default(0)
+  source                   BidSource
+  submittedAt              DateTime  @default(now()) @db.Timestamptz(3)
+
+  rfx      RfxEvent     @relation(fields: [rfxId], references: [id], onDelete: Cascade)
+  supplier Supplier     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  lines    RfxBidLine[]
+
+  @@unique([rfxId, supplierId])
+  @@map("rfx_bids")
+}
+
+model RfxBidLine {
+  id             String @id @default(uuid()) @db.Uuid
+  bidId          String @db.Uuid
+  rfxLineId      String @db.Uuid
+  unitPriceCents BigInt
+
+  bid        RfxBid   @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  rfxLine    RfxLine  @relation("BidLineRfxLine", fields: [rfxLineId], references: [id], onDelete: Cascade)
+  awardedFor RfxLine? @relation("AwardedBidLine")
+
+  @@unique([bidId, rfxLineId])
+  @@map("rfx_bid_lines")
 }
