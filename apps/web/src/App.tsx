@@ -3,6 +3,7 @@ import { RequireAuth } from './auth/RequireAuth';
 import { AppLayout } from './layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import { LogisticsPage } from './pages/logistics/LogisticsPage';
 import { MasterDataPage } from './pages/master-data/MasterDataPage';
 import { RequisitionDetailPage } from './pages/requisitions/RequisitionDetailPage';
 import { RequisitionFormPage } from './pages/requisitions/RequisitionFormPage';
@@ -22,6 +23,7 @@ export function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
+          <Route path="logistics" element={<LogisticsPage />} />
           <Route path="requisitions" element={<RequisitionsPage />} />
           <Route path="requisitions/new" element={<RequisitionFormPage />} />
           <Route path="requisitions/:id" element={<RequisitionDetailPage />} />

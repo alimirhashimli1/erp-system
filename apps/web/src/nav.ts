@@ -16,6 +16,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   { to: '/approvals', label: 'Approvals', roles: ['APPROVER'] },
   { to: '/master-data', label: 'Master data' },
+  { to: '/logistics', label: 'Incoterms & freight' },
 ];
 
 export const hasAnyRole = (userRoles: readonly Role[], allowed?: readonly Role[]): boolean =>

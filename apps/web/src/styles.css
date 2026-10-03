@@ -518,6 +518,16 @@ input.narrow {
   margin: 0.25rem 0 0.5rem;
 }
 
+.table.breakdown {
+  max-width: 520px;
+  margin-top: 1rem;
+}
+
+.table tr.total td {
+  font-weight: 700;
+  border-top: 2px solid var(--text);
+}
+
 @media (max-width: 600px) {
   .topbar {
     flex-wrap: wrap;

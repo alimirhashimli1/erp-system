@@ -4,3 +4,6 @@ export * from './common/money';
 export * from './master-data/master-data.schemas';
 export * from './requisitions/requisition.schemas';
 export * from './requisitions/doa';
+export * from './logistics/incoterms';
+export * from './logistics/landed-cost';
+export * from './logistics/freight';
