@@ -76,3 +76,11 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+/// One row per document type (PR, PO, …): gap-free numbering, see ADR 0005.
+model DocumentCounter {
+  type  String @id
+  value Int
+
+  @@map("document_counters")
+}

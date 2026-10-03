@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
-import { PrismaService } from '../../infrastructure/prisma/prisma.service';
+import { PrismaTxHost } from '../../infrastructure/prisma/prisma-tx-host';
 import type { AuditEntry, AuditLogRepository } from './audit-log.port';
 
 const toJson = (v: unknown) =>
@@ -8,10 +8,10 @@ const toJson = (v: unknown) =>
 
 @Injectable()
 export class PrismaAuditLogRepository implements AuditLogRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly tx: PrismaTxHost) {}
 
   async append(entry: AuditEntry): Promise<void> {
-    await this.prisma.auditLog.create({
+    await this.tx.client.auditLog.create({
       data: {
         actorId: entry.actorId,
         action: entry.action,

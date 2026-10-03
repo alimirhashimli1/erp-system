@@ -15,7 +15,9 @@
     "test:cov": "jest --coverage",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test:int": "prisma generate && node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.int.config.ts --runInBand",
+    "db:new-migration": "node scripts/new-migration.mjs"
   },
   "dependencies": {
     "@nestjs/bullmq": "11.0.5",
@@ -45,6 +47,8 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-socket": "0.2.11",
     "@nestjs/cli": "11.0.9",
     "@nestjs/schematics": "11.1.0",
     "@nestjs/testing": "11.2.7",

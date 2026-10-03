@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { LoggerModule } from 'nestjs-pino';
+import { DomainErrorFilter } from './common/domain-error.filter';
 import { AppConfigModule } from './config/config.module';
 import { AppConfigService } from './config/app-config.service';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
@@ -67,6 +68,8 @@ const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     // Strips any field not in the declared response schema (e.g. passwordHash) — defense in depth.
     { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
+    // Business-rule errors (DomainError) → 404/403/409/422, see ADR 0006.
+    { provide: APP_FILTER, useClass: DomainErrorFilter },
   ],
 })
 export class AppModule {}

@@ -61,6 +61,10 @@ jobs:
       - name: Schema and migrations are in sync (no un-migrated schema changes)
         run: pnpm --filter @procurestack/api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - run: pnpm --filter @procurestack/api db:seed
+      - name: Integration tests (repositories, transactions, constraints)
+        run: pnpm --filter @procurestack/api test:int
+        env:
+          TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/procurestack
       - name: Audit log is append-only
         run: |
           psql "$DATABASE_URL" -c "INSERT INTO audit_logs (id, action, \"entityType\") VALUES (gen_random_uuid(), 'CI', 'Test')"

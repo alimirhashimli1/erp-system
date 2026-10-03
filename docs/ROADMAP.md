@@ -27,7 +27,7 @@ Legend: ✅ done · ⏳ next · ☐ planned
 Goal: click through **PR → approval → RFQ → award → PO → GR → invoice → 3-way match → payment release**
 as different users.
 
-1. **Master data (thin)** — `Supplier`, `Item` (with unit of measure), `CostCenter`, `Currency`.
+1. **Master data (thin)** — `Supplier`, `Item` (with unit of measure), `CostCenter`. Single currency (EUR), see ADR 0004.
    Just enough for the P2P documents to reference real records, not free text.
 2. **Purchase Requisition** — line items, estimated value, cost center, need-by date.
    State machine: `DRAFT → SUBMITTED → APPROVED | REJECTED | RETURNED → CANCELLED`.
@@ -79,8 +79,9 @@ as different users.
 
 ---
 
-## Open decisions to confirm before Phase 1
+## Decisions confirmed before Phase 1
 
-1. **Approval routing:** multi-level, value-based DoA matrix (proposed) vs single approver.
-2. **Currency:** single base currency (EUR) with FX rates stored on documents (proposed)
-   vs full multi-currency ledger.
+1. **Approval routing:** multi-level, value-based DoA matrix — [ADR 0004](adr/0004-approval-routing-and-currency.md).
+2. **Currency:** one base currency (EUR) for every amount; no FX in Phase 1 — same ADR.
+3. Build order inside Phase 1: Incoterms/landed cost comes **before** RFx, because bid
+   comparison on total landed cost needs it.
