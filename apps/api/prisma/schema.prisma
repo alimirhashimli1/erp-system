@@ -33,11 +33,12 @@ model User {
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime @updatedAt @db.Timestamptz(3)
 
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]
-  requisitions  PurchaseRequisition[]
-  prApprovals   PrApproval[]
-  rfxEvents     RfxEvent[]
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+  requisitions   PurchaseRequisition[]
+  prApprovals    PrApproval[]
+  rfxEvents      RfxEvent[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("users")
 }
@@ -116,6 +117,7 @@ model Supplier {
 
   rfxInvitations RfxInvitation[]
   rfxBids        RfxBid[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("suppliers")
 }
@@ -134,6 +136,7 @@ model Item {
 
   prLines  PrLine[]
   rfxLines RfxLine[]
+  poLines  PoLine[]
 
   @@map("items")
 }
@@ -226,6 +229,7 @@ model PrLine {
   requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
   item        Item                @relation(fields: [itemId], references: [id], onDelete: Restrict)
   rfxLines    RfxLine[]
+  poLines     PoLine[]
 
   @@unique([requisitionId, lineNo])
   @@map("pr_lines")
@@ -317,10 +321,11 @@ model RfxEvent {
   createdAt          DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
 
-  buyer       User            @relation(fields: [buyerId], references: [id], onDelete: Restrict)
-  lines       RfxLine[]
-  invitations RfxInvitation[]
-  bids        RfxBid[]
+  buyer          User            @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  lines          RfxLine[]
+  invitations    RfxInvitation[]
+  bids           RfxBid[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([status])
   @@map("rfx_events")
@@ -393,7 +398,82 @@ model RfxBidLine {
   bid        RfxBid   @relation(fields: [bidId], references: [id], onDelete: Cascade)
   rfxLine    RfxLine  @relation("BidLineRfxLine", fields: [rfxLineId], references: [id], onDelete: Cascade)
   awardedFor RfxLine? @relation("AwardedBidLine")
+  poLine     PoLine?
 
   @@unique([bidId, rfxLineId])
   @@map("rfx_bid_lines")
+}
+
+// ───────────────────────────── Purchase orders ─────────────────────────────
+
+enum PoStatus {
+  DRAFT
+  ISSUED
+  ACKNOWLEDGED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+/// The legally binding order to one supplier. Created only from an awarded RFx.
+model PurchaseOrder {
+  id                   String    @id @default(uuid()) @db.Uuid
+  number               String    @unique
+  supplierId           String    @db.Uuid
+  buyerId              String    @db.Uuid
+  rfxId                String    @db.Uuid
+  status               PoStatus  @default(DRAFT)
+  incoterm             Incoterm
+  /// Incoterm named place, e.g. "Hamburg plant, gate 3".
+  namedPlace           String
+  leadTimeDays         Int
+  totalCents           BigInt
+  expectedDeliveryDate DateTime? @db.Date
+  issuedAt             DateTime? @db.Timestamptz(3)
+  acknowledgedAt       DateTime? @db.Timestamptz(3)
+  closedAt             DateTime? @db.Timestamptz(3)
+  cancelReason         String?
+  version              Int       @default(1)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  buyer    User     @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  rfx      RfxEvent @relation(fields: [rfxId], references: [id], onDelete: Restrict)
+  lines    PoLine[]
+
+  @@index([status])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model PoLine {
+  id               String  @id @default(uuid()) @db.Uuid
+  poId             String  @db.Uuid
+  lineNo           Int
+  /// FK: every PO line traces back to an approved requisition line…
+  prLineId         String  @db.Uuid
+  /// …equal to prLineId while the PO is live, NULL once cancelled. The unique index lets a
+  /// PR line be on only one live PO, yet be re-ordered after a cancellation.
+  activePrLineId   String? @unique @db.Uuid
+  /// …and to the awarded bid it executes (one PO line per awarded bid line, ever).
+  rfxBidLineId     String  @unique @db.Uuid
+  itemId           String  @db.Uuid
+  description      String
+  uom              Uom
+  quantity         Decimal @db.Decimal(14, 3)
+  unitPriceCents   BigInt
+  lineTotalCents   BigInt
+  receivedQuantity Decimal @default(0) @db.Decimal(14, 3)
+  invoicedQuantity Decimal @default(0) @db.Decimal(14, 3)
+
+  po         PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  prLine     PrLine        @relation(fields: [prLineId], references: [id], onDelete: Restrict)
+  rfxBidLine RfxBidLine    @relation(fields: [rfxBidLineId], references: [id], onDelete: Restrict)
+  item       Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@unique([poId, lineNo])
+  @@index([prLineId])
+  @@map("po_lines")
 }

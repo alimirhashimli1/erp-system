@@ -547,6 +547,12 @@ fieldset.checklist legend {
   font-size: 0.9rem;
 }
 
+.actions-stack {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 @media (max-width: 600px) {
   .topbar {
     flex-wrap: wrap;

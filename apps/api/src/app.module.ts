@@ -16,6 +16,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
+import { PurchasingModule } from './modules/purchasing/purchasing.module';
 import { RequisitionsModule } from './modules/requisitions/requisitions.module';
 import { SourcingJobsModule } from './modules/sourcing/jobs/sourcing.jobs';
 import { SourcingModule } from './modules/sourcing/sourcing.module';
@@ -71,6 +72,7 @@ const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
     MasterDataModule,
     RequisitionsModule,
     SourcingModule,
+    PurchasingModule,
     // Queues + workers need Redis; tests and Redis-less runs set JOBS_ENABLED=false (ADR 0008).
     ConditionalModule.registerWhen(SourcingJobsModule, (env) => env['JOBS_ENABLED'] !== 'false'),
   ],

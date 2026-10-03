@@ -16,6 +16,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   { to: '/approvals', label: 'Approvals', roles: ['APPROVER'] },
   { to: '/sourcing', label: 'Sourcing', roles: ['BUYER', 'FINANCE', 'ADMIN'] },
+  {
+    to: '/purchase-orders',
+    label: 'Purchase orders',
+    roles: ['BUYER', 'WAREHOUSE', 'FINANCE', 'ADMIN'],
+  },
   { to: '/master-data', label: 'Master data' },
   { to: '/logistics', label: 'Incoterms & freight' },
 ];

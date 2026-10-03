@@ -6,8 +6,9 @@ import {
   type Rfx,
 } from '@procurestack/shared';
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { errorText } from '../../api/http';
+import { useCreatePosFromRfx } from '../../api/purchasing';
 import { useAward, useRfx, useRfxAction, useSubmitBid } from '../../api/sourcing';
 import { useAuth } from '../../auth/auth-context';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -103,6 +104,7 @@ export function RfxDetailPage() {
 
       {isBuyer && r.status === 'PUBLISHED' && r.type !== 'RFI' && <BidForm rfx={r} />}
       {r.evaluation && <Evaluation rfx={r} canAward={isBuyer && r.status === 'EVALUATED'} />}
+      {isBuyer && r.status === 'AWARDED' && <CreatePurchaseOrders rfxId={r.id} />}
     </>
   );
 }
@@ -395,6 +397,53 @@ function Evaluation({ rfx, canAward }: { rfx: Rfx; canAward: boolean }) {
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+/** Award → contract: one draft PO per winning supplier. */
+function CreatePurchaseOrders({ rfxId }: { rfxId: string }) {
+  const create = useCreatePosFromRfx(rfxId);
+  const navigate = useNavigate();
+  const [namedPlace, setNamedPlace] = useState('Hamburg plant, goods-in gate 3');
+  return (
+    <section className="card">
+      <h2>Purchase orders</h2>
+      <div className="form-actions">
+        <label className="inline">
+          Delivery place (Incoterm named place)
+          <input
+            value={namedPlace}
+            onChange={(e) => {
+              setNamedPlace(e.target.value);
+            }}
+          />
+        </label>
+        <button
+          disabled={create.isPending || namedPlace.trim().length < 2}
+          onClick={() => {
+            create.mutate(
+              { namedPlace: namedPlace.trim() },
+              {
+                onSuccess: (pos) => {
+                  void navigate(
+                    pos.length === 1 && pos[0]
+                      ? `/purchase-orders/${pos[0].id}`
+                      : '/purchase-orders',
+                  );
+                },
+              },
+            );
+          }}
+        >
+          Create draft POs
+        </button>
+        {create.error && (
+          <p className="form-error" role="alert">
+            {errorText(create.error)}
+          </p>
+        )}
+      </div>
     </section>
   );
 }

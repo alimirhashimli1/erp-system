@@ -5,6 +5,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { LogisticsPage } from './pages/logistics/LogisticsPage';
 import { MasterDataPage } from './pages/master-data/MasterDataPage';
+import { PurchaseOrderDetailPage } from './pages/purchasing/PurchaseOrderDetailPage';
+import { PurchaseOrdersPage } from './pages/purchasing/PurchaseOrdersPage';
 import { RequisitionDetailPage } from './pages/requisitions/RequisitionDetailPage';
 import { RequisitionFormPage } from './pages/requisitions/RequisitionFormPage';
 import { RequisitionsPage } from './pages/requisitions/RequisitionsPage';
@@ -28,6 +30,8 @@ export function App() {
           <Route path="logistics" element={<LogisticsPage />} />
           <Route path="sourcing" element={<SourcingPage />} />
           <Route path="sourcing/rfx/:id" element={<RfxDetailPage />} />
+          <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+          <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
           <Route path="requisitions" element={<RequisitionsPage />} />
           <Route path="requisitions/new" element={<RequisitionFormPage />} />
           <Route path="requisitions/:id" element={<RequisitionDetailPage />} />

@@ -67,6 +67,7 @@ export async function approvedRequisition(
   t: HttpApp,
   c: Cast,
   lines: { itemId: string; quantity: number; unitPriceCents: number }[],
+  requester: TestUser = c.requester,
 ): Promise<Requisition> {
   const costCenterId = idOf(
     await t
@@ -75,7 +76,7 @@ export async function approvedRequisition(
       .expect(201),
   );
   const draft = await t
-    .as(c.requester)
+    .as(requester)
     .post('/api/requisitions', {
       title: 'Fixture requisition',
       justification: 'Integration test',
@@ -85,11 +86,11 @@ export async function approvedRequisition(
     })
     .expect(201);
   await t
-    .as(c.requester)
+    .as(requester)
     .post(`/api/requisitions/${idOf(draft)}/submit`)
     .expect(200);
   // Small totals need only L1; a level-3 approver can take any step.
-  let pr = (await t.as(c.requester).get(`/api/requisitions/${idOf(draft)}`)).body as Requisition;
+  let pr = (await t.as(requester).get(`/api/requisitions/${idOf(draft)}`)).body as Requisition;
   while (pr.status === 'SUBMITTED') {
     pr = (
       await t

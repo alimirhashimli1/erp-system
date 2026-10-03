@@ -46,7 +46,7 @@ const profileFor = (country: string): Profile => {
   if (isEuCountry(country)) {
     return {
       incoterm: 'DAP',
-      priceFactor: [0.95, 1.15],
+      priceFactor: [0.92, 1.08],
       leadDays: [5, 15],
       freightShare: 0,
       insuranceShare: 0,

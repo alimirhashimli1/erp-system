@@ -8,3 +8,4 @@ export * from './logistics/incoterms';
 export * from './logistics/landed-cost';
 export * from './logistics/freight';
 export * from './sourcing/rfx.schemas';
+export * from './purchasing/po.schemas';
