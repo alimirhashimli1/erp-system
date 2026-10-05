@@ -1,4 +1,4 @@
-import type { Requisition, Rfx } from '@procurestack/shared';
+import type { PurchaseOrder, Requisition, Rfx } from '@procurestack/shared';
 import type { Clock } from '../../src/common/clock';
 import { type HttpApp, type TestUser, uniq } from './http-app';
 
@@ -149,4 +149,26 @@ export async function awardedRfx(
       })
       .expect(200)
   ).body as Rfx;
+}
+
+/** An ISSUED PO for the given lines (PR → RFQ award → draft PO → issue by the cast's buyer). */
+export async function issuedPo(
+  t: HttpApp,
+  c: Cast,
+  clock: TestClock,
+  supplierId: string,
+  lines: { itemId: string; quantity: number; unitPriceCents: number }[],
+): Promise<PurchaseOrder> {
+  const pr = await approvedRequisition(t, c, lines);
+  const rfx = await awardedRfx(t, c, clock, pr, supplierId, {
+    unitPriceCents: lines[0]?.unitPriceCents ?? 100,
+  });
+  const [po] = (
+    await t
+      .as(c.buyer)
+      .post(`/api/purchase-orders/from-rfx/${rfx.id}`, { namedPlace: 'Hamburg plant' })
+      .expect(201)
+  ).body as PurchaseOrder[];
+  return (await t.as(c.buyer).post(`/api/purchase-orders/${po!.id}/issue`).expect(200))
+    .body as PurchaseOrder;
 }

@@ -39,6 +39,7 @@ model User {
   prApprovals    PrApproval[]
   rfxEvents      RfxEvent[]
   purchaseOrders PurchaseOrder[]
+  goodsReceipts  GoodsReceipt[]
 
   @@map("users")
 }
@@ -438,10 +439,11 @@ model PurchaseOrder {
   createdAt            DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
 
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  buyer    User     @relation(fields: [buyerId], references: [id], onDelete: Restrict)
-  rfx      RfxEvent @relation(fields: [rfxId], references: [id], onDelete: Restrict)
+  supplier Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  buyer    User           @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  rfx      RfxEvent       @relation(fields: [rfxId], references: [id], onDelete: Restrict)
   lines    PoLine[]
+  receipts GoodsReceipt[]
 
   @@index([status])
   @@index([supplierId])
@@ -472,8 +474,45 @@ model PoLine {
   prLine     PrLine        @relation(fields: [prLineId], references: [id], onDelete: Restrict)
   rfxBidLine RfxBidLine    @relation(fields: [rfxBidLineId], references: [id], onDelete: Restrict)
   item       Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  grLines    GrLine[]
 
   @@unique([poId, lineNo])
   @@index([prLineId])
   @@map("po_lines")
+}
+
+// ───────────────────────────── Goods receipt ─────────────────────────────
+
+/// Immutable record of a delivery. Corrections are new documents, never edits.
+model GoodsReceipt {
+  id           String   @id @default(uuid()) @db.Uuid
+  number       String   @unique
+  poId         String   @db.Uuid
+  receivedById String   @db.Uuid
+  deliveryNote String
+  receivedAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  po         PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Restrict)
+  receivedBy User          @relation(fields: [receivedById], references: [id], onDelete: Restrict)
+  lines      GrLine[]
+
+  @@index([poId])
+  @@map("goods_receipts")
+}
+
+model GrLine {
+  id               String  @id @default(uuid()) @db.Uuid
+  grId             String  @db.Uuid
+  poLineId         String  @db.Uuid
+  receivedQuantity Decimal @db.Decimal(14, 3)
+  rejectedQuantity Decimal @default(0) @db.Decimal(14, 3)
+  /// received − rejected; what counts for the 3-way match and stock.
+  acceptedQuantity Decimal @db.Decimal(14, 3)
+  rejectionReason  String?
+
+  gr     GoodsReceipt @relation(fields: [grId], references: [id], onDelete: Cascade)
+  poLine PoLine       @relation(fields: [poLineId], references: [id], onDelete: Restrict)
+
+  @@unique([grId, poLineId])
+  @@map("gr_lines")
 }

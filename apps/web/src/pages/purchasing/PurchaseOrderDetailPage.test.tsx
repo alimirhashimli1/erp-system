@@ -1,8 +1,9 @@
 import type { PurchaseOrder } from '@procurestack/shared';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mockApi, renderAs } from '../../test/render';
+import { mockApi, renderAs, sentBody } from '../../test/render';
 import { PurchaseOrderDetailPage } from './PurchaseOrderDetailPage';
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -46,7 +47,7 @@ const po = (overrides: Partial<PurchaseOrder> = {}): PurchaseOrder => ({
 });
 
 const render = (roles: Parameters<typeof renderAs>[0], data: PurchaseOrder) => {
-  mockApi({ [`GET /api/purchase-orders/${data.id}`]: data });
+  mockApi({ [`GET /api/purchase-orders/${data.id}`]: data, 'GET /api/goods-receipts': [] });
   renderAs(
     roles,
     <Routes>
@@ -67,14 +68,55 @@ describe('PurchaseOrderDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Cancel PO' })).toBeDisabled(); // reason first
   });
 
-  it('shows the warehouse the order but no buyer actions', async () => {
+  it('shows the warehouse the order with a receipt form but no buyer actions', async () => {
     render(['WAREHOUSE'], po({ status: 'ISSUED' }));
     expect(await screen.findByText('PR-000009')).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Issue|Cancel|confirmation/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Post goods receipt' })).toBeDisabled(); // note first
   });
 
   it('offers a short-close on a partially received PO', async () => {
     render(['BUYER'], po({ status: 'PARTIALLY_RECEIVED' }));
     expect(await screen.findByRole('button', { name: /Short-close/ })).toBeInTheDocument();
+  });
+
+  it('posts a receipt with a rejected quantity for the open amount', async () => {
+    const data = po({ status: 'ISSUED' });
+    const spy = mockApi({
+      [`GET /api/purchase-orders/${data.id}`]: data,
+      'GET /api/goods-receipts': [],
+      'POST /api/goods-receipts': () => ({
+        status: 422,
+        body: { message: 'Only 4 EA still open' },
+      }),
+    });
+    renderAs(
+      ['WAREHOUSE'],
+      <Routes>
+        <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+      </Routes>,
+      `/purchase-orders/${data.id}`,
+    );
+    await userEvent.type(await screen.findByLabelText('Delivery note'), 'DN-4711');
+    await userEvent.clear(screen.getByLabelText('Rejected line 1'));
+    await userEvent.type(screen.getByLabelText('Rejected line 1'), '1');
+    await userEvent.type(screen.getByLabelText('Rejection reason line 1'), 'dented');
+    await userEvent.click(screen.getByRole('button', { name: 'Post goods receipt' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Only 4 EA still open');
+    expect(sentBody(spy, 'POST')).toEqual({
+      poId: data.id,
+      deliveryNote: 'DN-4711',
+      lines: [
+        {
+          poLineId: data.lines[0]!.id,
+          receivedQuantity: 4,
+          rejectedQuantity: 1,
+          rejectionReason: 'dented',
+        },
+      ],
+    });
   });
 });

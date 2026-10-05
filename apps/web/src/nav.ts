@@ -21,6 +21,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Purchase orders',
     roles: ['BUYER', 'WAREHOUSE', 'FINANCE', 'ADMIN'],
   },
+  { to: '/receiving', label: 'Receiving', roles: ['WAREHOUSE', 'BUYER', 'FINANCE', 'ADMIN'] },
   { to: '/master-data', label: 'Master data' },
   { to: '/logistics', label: 'Incoterms & freight' },
 ];

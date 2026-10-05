@@ -5,12 +5,14 @@ import { errorText } from '../../api/http';
 import { usePoAction, usePurchaseOrder } from '../../api/purchasing';
 import { useAuth } from '../../auth/auth-context';
 import { StatusBadge } from '../../components/StatusBadge';
+import { ReceiptsSection } from '../receiving/ReceiptsSection';
 
 export function PurchaseOrderDetailPage() {
   const { id = '' } = useParams();
   const po = usePurchaseOrder(id);
   const { state } = useAuth();
-  const isBuyer = state.status === 'authenticated' && state.user.roles.includes('BUYER');
+  const roles = state.status === 'authenticated' ? state.user.roles : [];
+  const isBuyer = roles.includes('BUYER');
 
   if (po.isPending) return <p className="muted">Loading…</p>;
   if (po.isError) return <p className="form-error">{errorText(po.error)}</p>;
@@ -98,6 +100,8 @@ export function PurchaseOrderDetailPage() {
       </div>
 
       {isBuyer && <BuyerActions po={p} />}
+
+      {p.status !== 'DRAFT' && <ReceiptsSection po={p} canReceive={roles.includes('WAREHOUSE')} />}
     </section>
   );
 }
