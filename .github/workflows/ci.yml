@@ -18,7 +18,7 @@ jobs:
     name: Audit, lint, typecheck, test, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
       - uses: actions/setup-node@v5
         with:
@@ -50,7 +50,7 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/procurestack
       SEED_DEFAULT_PASSWORD: ci-only-password
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: verify
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: docker build -f apps/api/Dockerfile --target runtime -t procurestack-api .
       - run: docker build -f apps/api/Dockerfile --target migrator -t procurestack-migrate .
       - run: docker build -f apps/web/Dockerfile --target runtime -t procurestack-web .
