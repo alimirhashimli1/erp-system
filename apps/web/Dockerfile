@@ -2,7 +2,7 @@
 # Build context: repository root (see docker-compose.yml).
 
 # ---------- build: compile shared + Vite bundle ----------
-FROM node:24.11.1-bookworm-slim AS build
+FROM node:26.12.1-bookworm-slim AS build
 ENV HUSKY=0 PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 RUN npm install -g pnpm@12.4.2
 WORKDIR /repo
